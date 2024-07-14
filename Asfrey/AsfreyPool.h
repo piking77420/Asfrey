@@ -6,19 +6,12 @@
 
 #include "Asfrey_header.h"
 #include "Fiber.hpp"
+#include "Job.hpp"
 
 
 namespace Asfrey
 {
-    struct Job;
 
-    struct JobCounter
-    {
-        std::atomic_uint currentJobBeExecute;
-        Job* jobPtr = nullptr;
-        size_t JobNbr = 0;
-    };
-   
     class AsfreyPool
     {
     public:
@@ -26,26 +19,35 @@ namespace Asfrey
 
         void Destroy();
 
-        void RunJob(Job* _job, const size_t _jobNbr);
+        void RunJob(Job* _job, const size_t _jobNbr, AtomicCounter** _jobCounter);
 
-        void WaitForCounter();
+        void WaitForCounterAndFree(AtomicCounter* _jobCounter);
+
+        void SetCondition(JobCondition _jobCondition, bool _value);
+
+        bool GetCondition(JobCondition _jobCondition);
         
         static inline size_t StackSize = -1;
+
     private:
-        struct AsfreyWorkerThread
+        struct JobQueue
         {
-            std::thread thread;
-            std::queue<Job*> m_ThreadPending;
+            std::queue<Job*> queue;
             std::mutex queuMutex;
         };
 
-        std::array<AsfreyWorkerThread, MAX_WORKER_THREAD> m_Threads;
-        
+        std::array<std::thread, MAX_WORKER_THREAD> m_Threads;
+
+        std::array<JobQueue, static_cast<size_t>(JobPriorities::COUNT)> m_JobQueue;
+
         std::array<Fiber, MAX_FIBER> m_Fibers;
-        
-        JobCounter m_JobCounter;
+
+        std::unordered_map<JobCondition, bool> m_Condition;
 
         void RunThread();
+
+        void ThreadRunFunction();
+
     };
  
 }

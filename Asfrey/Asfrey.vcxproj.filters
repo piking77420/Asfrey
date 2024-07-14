@@ -21,12 +21,21 @@
     <ClInclude Include="Job.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AsfreyPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Asfrey_header.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Fiber.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Job.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AsfreyPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

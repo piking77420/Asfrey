@@ -9,11 +9,22 @@ using namespace Asfrey;
 
 void AsfreyPool::Initialize()
 {
-	ULONG_PTR lowLimit, highLimit;
-	GetCurrentThreadStackLimits(&lowLimit, &highLimit);
+	{
+		ULONG_PTR lowLimit, highLimit;
+		GetCurrentThreadStackLimits(&lowLimit, &highLimit);
 
-	// Calculate the stack size
-	StackSize = highLimit - lowLimit;
+		// Calculate the stack size
+		StackSize = highLimit - lowLimit;
+	}
+	
+	{
+		for (size_t i = 0; i < static_cast<size_t>(JobCondition::COUNT); i++)
+		{
+			JobCondition jobCondition = static_cast<JobCondition>(i);
+			m_Condition.insert({ jobCondition, false });
+		}
+	}
+	
 	RunThread();
 }
 
@@ -21,42 +32,51 @@ void AsfreyPool::Destroy()
 {
 	for (size_t i = 0; i < m_Threads.size(); i++)
 	{
-		AsfreyWorkerThread& asfreyWorker = m_Threads[i];
-		asfreyWorker.thread = {};
+		m_Threads[i] = {};
 	}
+
+	
 }
 
-void AsfreyPool::RunJob(Job* _job, const size_t _jobNbr)
+void AsfreyPool::RunJob(Job* _job, const size_t _jobNbr, AtomicCounter** _jobCounter)
 {
-	m_JobCounter.JobNbr = _jobNbr;
-	m_JobCounter.jobPtr = _job;
-
+	AtomicCounter* atomicCounter = new AtomicCounter();
+	*atomicCounter = static_cast<uint32_t>(_jobNbr);
+	*_jobCounter = atomicCounter;
 
 	for (size_t i = 0; i < _jobNbr; i++)
 	{
 		const size_t threadIndex = i % MAX_WORKER_THREAD;
 
-		AsfreyWorkerThread& asfreyWorker = m_Threads[threadIndex];
-		if (asfreyWorker.queuMutex.try_lock())
-		{
-			asfreyWorker.m_ThreadPending.push(&_job[i]);
-			asfreyWorker.queuMutex.unlock();
-		}
-		
+		Job& j = _job[i];
+		JobQueue& jobQueu = m_JobQueue[static_cast<size_t>(j.jobPriorities)];
+		j.counter = *_jobCounter;
+
+		std::lock_guard<std::mutex> lock(jobQueu.queuMutex);
+		jobQueu.queue.push(&j);
 	}
 
 }
 
-void AsfreyPool::WaitForCounter()
+
+void AsfreyPool::WaitForCounterAndFree(AtomicCounter* _jobCounter)
 {
-	while (m_JobCounter.currentJobBeExecute != m_JobCounter.JobNbr)
+	while (*_jobCounter != 0)
 	{
 		std::this_thread::yield();
 	}
 
-	m_JobCounter.currentJobBeExecute = 0;
-	m_JobCounter.JobNbr = 0;
-	m_JobCounter.jobPtr = nullptr;
+	delete _jobCounter;
+}
+
+void AsfreyPool::SetCondition(JobCondition _jobCondition, bool _value)
+{
+	m_Condition.at(_jobCondition) = _value;
+}
+
+bool AsfreyPool::GetCondition(JobCondition _jobCondition)
+{
+	return m_Condition.at(_jobCondition);
 }
 
 void AsfreyPool::RunThread()
@@ -66,28 +86,47 @@ void AsfreyPool::RunThread()
 		auto l = [&]()
 			{
 				while (true)
-				{
-					if (asfreyWorker.m_ThreadPending.empty())
-					{
-						continue;
-					}
-
-					if (asfreyWorker.queuMutex.try_lock())
-					{
-						Job* job = asfreyWorker.m_ThreadPending.front();
-
-						job->func(job->arg);
-						++m_JobCounter.currentJobBeExecute;
-						asfreyWorker.m_ThreadPending.pop();
-
-						asfreyWorker.queuMutex.unlock();
-					}
-					
+				{	
+					ThreadRunFunction();
 				}
 			};
-		asfreyWorker.thread = std::thread(l);
-		asfreyWorker.thread.detach();
+		asfreyWorker = std::thread(l);
+		asfreyWorker.detach();
 	}
+}
+
+void Asfrey::AsfreyPool::ThreadRunFunction()
+{
+
+	for (size_t i = m_JobQueue.size(); i-- > 0;)
+	{
+		JobQueue& jobQueue = m_JobQueue[i];
+
+		if (jobQueue.queue.empty())
+		{
+			continue;
+		}
+
+		if (jobQueue.queuMutex.try_lock())
+		{
+			Job job = *jobQueue.queue.front();
+			AtomicCounter* atomicCounter = job.counter;
+
+			jobQueue.queue.pop();
+			// Free the mutex just before the job execution 
+			jobQueue.queuMutex.unlock();
+
+			if (job.func)
+			{
+				job.func(job.arg);
+				(*atomicCounter)--;
+
+				// Reset iterattion to always execute The High priorities Job First
+				i = m_JobQueue.size();
+			}
+		}
+	}
+
 }
 
 

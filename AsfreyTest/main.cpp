@@ -34,21 +34,26 @@ void CountTo(void* _param)
 }
 
 
+
+
 void MulthiThread()
 {
 	using namespace Asfrey;
 
-	std::vector<Asfrey::Job> jobs;
-	jobs.resize(CountToValue);
+	std::vector<Asfrey::Job> jobs1;
+	jobs1.resize(CountToValue);
 
-	for (auto& j : jobs)
+	for (auto& j : jobs1)
 	{
 		j.func = CountTo;
 		j.arg = nullptr;
+		j.jobPriorities = JobPriorities::MEDIUM;
 	}
 
-	asfreyPool.RunJob(jobs.data(), jobs.size());
-	asfreyPool.WaitForCounter();
+	AtomicCounter* jobCounter;
+	asfreyPool.RunJob(jobs1.data(), jobs1.size(), &jobCounter);
+
+	asfreyPool.WaitForCounterAndFree(jobCounter);
 }
 
 void MonoThread()
