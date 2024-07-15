@@ -11,21 +11,28 @@
 
 namespace Asfrey
 {
-
+    // TO DO NEED TO CHANGE THIS to static
     class AsfreyPool
     {
+    private:
+        static inline AsfreyPool* m_Instance = nullptr;
     public:
-        void Initialize();
 
-        void Destroy();
+        static void __stdcall FibersRunJob(void* param);
 
-        void RunJob(Job* _job, const size_t _jobNbr, AtomicCounter** _jobCounter);
+        static void Initialize();
 
-        void WaitForCounterAndFree(AtomicCounter* _jobCounter);
+        static void Destroy();
 
-        void SetCondition(JobCondition _jobCondition, bool _value);
+        static void RunJob(Job* _job, const size_t _jobNbr, AtomicCounter** _jobCounter);
 
-        bool GetCondition(JobCondition _jobCondition);
+        static void WaitForCounterAndFree(AtomicCounter* _jobCounter);
+
+        static void SetCondition(JobCondition _jobCondition, bool _value);
+
+        static bool GetCondition(JobCondition _jobCondition);
+
+        static void YieldOnCondition(JobCondition _jobCondition);
         
         static inline size_t StackSize = -1;
 
@@ -36,17 +43,42 @@ namespace Asfrey
             std::mutex queuMutex;
         };
 
-        std::array<std::thread, MAX_WORKER_THREAD> m_Threads;
+        struct FiberBuffer
+        {
+           std::array<Fiber, MAX_FIBER> m_Fibers;
+           std::mutex fibersBufferMutex;
+        };
+
+        struct JobAndWorkerFiber
+        {
+            Job* job = nullptr;
+            Fiber* workerFiber = nullptr;
+        };
+
+        struct WorkerThread
+        {
+            Fiber runthreadFiber;
+            std::thread thread;
+        };
+
+        std::array<WorkerThread, MAX_WORKER_THREAD> m_Threads;
 
         std::array<JobQueue, static_cast<size_t>(JobPriorities::COUNT)> m_JobQueue;
 
-        std::array<Fiber, MAX_FIBER> m_Fibers;
+        FiberBuffer fiberBuffer;
 
         std::unordered_map<JobCondition, bool> m_Condition;
 
-        void RunThread();
+        AsfreyPool() = default;
 
-        void ThreadRunFunction();
+        ~AsfreyPool() = default;
+
+        static void RunThread();
+
+
+        static void __stdcall ThreadRunFunction(Fiber* _workerFibers);
+
+        static void FinAvailableFiber(Fiber* _outFiber);
 
     };
  

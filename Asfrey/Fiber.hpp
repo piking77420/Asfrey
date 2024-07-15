@@ -28,13 +28,22 @@ namespace Asfrey
 		
 		Fiber() = default;
 
+		void Create(size_t _stackSize, FiberEntry _fiberEntry, _In_opt_ void* lpParameter);
+
 		void ConvertCurrentThreadToFiber();
 		
 		void ConvertCurrentFiberToThread();
 
 		void Switch();
+
+		void Destroy();
+
+		static inline bool IsCurrentThreadAFiber();
 		
 		~Fiber();
+
+		operator bool() const { return m_Handle != nullptr; };
+
 
 		
 	private:

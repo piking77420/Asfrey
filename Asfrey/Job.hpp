@@ -20,9 +20,8 @@ namespace Asfrey
 
     enum class JobCondition
     {
-        LOW,
-        MEDIUM,
-        HIGH,
+        C1,
+        C2,
 
         COUNT
     };

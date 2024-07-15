@@ -10,10 +10,9 @@
 
 #include "AsfreyPool.h"
 
-constexpr size_t CountToValue = 100;
-Asfrey::AsfreyPool asfreyPool;
+constexpr size_t CountToValue = 1000;
 
-void CountTo(void* _param)
+void ASFREY_JOB_ENTRY_POINT CountTo(void* _param)
 {
 	using namespace std;
 	int i, j;
@@ -34,8 +33,6 @@ void CountTo(void* _param)
 }
 
 
-
-
 void MulthiThread()
 {
 	using namespace Asfrey;
@@ -51,9 +48,9 @@ void MulthiThread()
 	}
 
 	AtomicCounter* jobCounter;
-	asfreyPool.RunJob(jobs1.data(), jobs1.size(), &jobCounter);
+	Asfrey::AsfreyPool::RunJob(jobs1.data(), jobs1.size(), &jobCounter);
 
-	asfreyPool.WaitForCounterAndFree(jobCounter);
+	Asfrey::AsfreyPool::WaitForCounterAndFree(jobCounter);
 }
 
 void MonoThread()
@@ -67,7 +64,7 @@ void MonoThread()
 
 int main()
 {
-	asfreyPool.Initialize();
+	Asfrey::AsfreyPool::Initialize();
 
 	
 	auto start = std::chrono::high_resolution_clock::now();
@@ -103,6 +100,6 @@ int main()
 
 	std::getchar();
 
-	asfreyPool.Destroy();
+	Asfrey::AsfreyPool::Destroy();
 	return 0;
 }

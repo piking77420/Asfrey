@@ -2,7 +2,7 @@
 
 #include <atomic>
 
-#define ASFREY_JOB_ENTRY_POINT
+#define ASFREY_JOB_ENTRY_POINT __stdcall
 
 #define MAX_WORKER_THREAD 6
 
