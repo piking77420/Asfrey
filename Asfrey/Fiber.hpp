@@ -24,28 +24,33 @@ namespace Asfrey
 	class Fiber
 	{
 	public:
+
+		static void Swap(Fiber& _left, Fiber& _right);
+		
 		Fiber(size_t _stackSize, FiberEntry _fiberEntry, _In_opt_ void* lpParameter);
 		
 		Fiber() = default;
 
-		void Create(size_t _stackSize, FiberEntry _fiberEntry, _In_opt_ void* lpParameter);
+		void Create(size_t _stackSize, FiberEntry _fiberEntry, _In_opt_ void* _parameter);
 
+		Fiber& operator=(const Fiber& other);
+
+		Fiber& operator=(Fiber&& other) noexcept;
+		
 		void ConvertCurrentThreadToFiber();
 		
 		void ConvertCurrentFiberToThread();
-
+		
 		void Switch();
 
 		void Destroy();
+
+		bool inline HasHandle() const { return m_Handle != nullptr; }
 
 		static inline bool IsCurrentThreadAFiber();
 		
 		~Fiber();
 
-		operator bool() const { return m_Handle != nullptr; };
-
-
-		
 	private:
 		void* m_Handle = nullptr;
 	};

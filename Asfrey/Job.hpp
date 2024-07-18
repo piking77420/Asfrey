@@ -18,23 +18,15 @@ namespace Asfrey
         COUNT
     };
 
-    enum class JobCondition
-    {
-        C1,
-        C2,
-
-        COUNT
-    };
-
+    
     struct Job
     {
         _FuncPtr func = nullptr;
         void* arg = nullptr;   
         JobPriorities jobPriorities = JobPriorities::MEDIUM;
         AtomicCounter* counter = nullptr;
-       
 
-        void operator()() const
+        inline void operator()() const
         {
             if (func)
             {

@@ -11,7 +11,27 @@
 
 namespace Asfrey
 {
-    // TO DO NEED TO CHANGE THIS to static
+   
+
+    enum class JobCondition
+    {
+        C1,
+        C2,
+
+        COUNT
+    };
+
+   
+    enum class FibersWorkingState
+    {
+        AVAILABLE,
+        WAITING,
+        WORKING,
+
+        Count
+    };
+
+  
     class AsfreyPool
     {
     private:
@@ -43,10 +63,21 @@ namespace Asfrey
             std::mutex queuMutex;
         };
 
+        struct FiberWithState
+        {
+            FibersWorkingState state = FibersWorkingState::AVAILABLE;
+            Fiber fiber;
+        };
+
         struct FiberBuffer
         {
-           std::array<Fiber, MAX_FIBER> m_Fibers;
-           std::mutex fibersBufferMutex;
+           std::array<FiberWithState, MAX_FIBER> fibers;
+           std::mutex mutex;
+        };
+
+        struct FiberPendingMap
+        {
+            std::unordered_map<JobCondition, FiberBuffer> pendingFiberMap;
         };
 
         struct JobAndWorkerFiber
@@ -58,14 +89,20 @@ namespace Asfrey
         struct WorkerThread
         {
             Fiber runthreadFiber;
-            std::thread thread;
+            std::jthread thread;
+            std::jthread::id id;
+
+            bool hasBeenStopByCondition = false;
         };
 
-        std::array<WorkerThread, MAX_WORKER_THREAD> m_Threads;
+   
+        std::array<WorkerThread, MAX_WORKER_THREAD> m_jThreads;
 
         std::array<JobQueue, static_cast<size_t>(JobPriorities::COUNT)> m_JobQueue;
 
-        FiberBuffer fiberBuffer;
+        FiberBuffer m_FiberBuffer;
+
+        FiberPendingMap m_FibersPendingMap;
 
         std::unordered_map<JobCondition, bool> m_Condition;
 
@@ -75,10 +112,18 @@ namespace Asfrey
 
         static void RunThread();
 
+        static void ThreadRunFunction(WorkerThread* _workerThread);
 
-        static void __stdcall ThreadRunFunction(Fiber* _workerFibers);
+        static bool FindFiber(FiberBuffer* _fiberBuffer, FiberWithState** _outFiber, FibersWorkingState _inState, FibersWorkingState _outState);
 
-        static void FinAvailableFiber(Fiber* _outFiber);
+        static bool FindFiber(FiberPendingMap* _fiberPendingMap, FiberWithState** _outFiber, FibersWorkingState _inState, FibersWorkingState _outState);
+
+        static bool PutInWaitList(FiberWithState** _fiberToPutInWaitList);
+
+        static bool GetJobFromQueu(JobQueue* _JobQueue,Job* _Outjob);
+
+        static bool LookForWaitingJob();
+
 
     };
  

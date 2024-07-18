@@ -7,14 +7,35 @@
 using namespace Asfrey;
 
 
+void Fiber::Swap(Fiber& _left, Fiber& _right)
+{
+    void* tmrp = _left.m_Handle;
+    _left.m_Handle = _right.m_Handle;
+    _right.m_Handle = tmrp;
+}
+
 Fiber::Fiber(size_t _stackSize, FiberEntry _fiberEntry ,  _In_opt_ void* _parameter)
 {   
     m_Handle = CreateFiber(_stackSize, _fiberEntry, _parameter);
 }
 
-void Asfrey::Fiber::Create(size_t _stackSize, FiberEntry _fiberEntry, void* lpParameter)
+void Asfrey::Fiber::Create(size_t _stackSize, FiberEntry _fiberEntry, void* _parameter)
 {
-    m_Handle = CreateFiber(_stackSize, _fiberEntry, lpParameter);
+    m_Handle = CreateFiber(_stackSize, _fiberEntry, _parameter);
+}
+
+Fiber& Asfrey::Fiber::operator=(const Fiber& other)
+{
+    m_Handle = other.m_Handle;
+    
+    return *this;
+}
+
+Fiber& Asfrey::Fiber::operator=(Fiber&& other) noexcept
+{
+    m_Handle = std::move(other.m_Handle);
+
+    return *this;
 }
 
 void Fiber::ConvertCurrentThreadToFiber()

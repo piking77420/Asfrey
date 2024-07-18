@@ -10,10 +10,14 @@
 
 #include "AsfreyPool.h"
 
+bool MonoVsMultiTest = true;
+
+
 constexpr size_t CountToValue = 1000;
 
-void ASFREY_JOB_ENTRY_POINT CountTo(void* _param)
+void CountTo(void* _param)
 {
+	
 	using namespace std;
 	int i, j;
 	int nx = 5500;
@@ -61,18 +65,15 @@ void MonoThread()
 	}
 }
 
-
-int main()
+void MonoMulti()
 {
 	Asfrey::AsfreyPool::Initialize();
 
-	
 	auto start = std::chrono::high_resolution_clock::now();
 	MulthiThread();
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsedMulti = end - start;
 	std::cout << "Multithreaded execution time: " << elapsedMulti.count() << '\n';
-
 	start = std::chrono::high_resolution_clock::now();
 	MonoThread();
 	end = std::chrono::high_resolution_clock::now();
@@ -101,5 +102,72 @@ int main()
 	std::getchar();
 
 	Asfrey::AsfreyPool::Destroy();
+}
+
+void SetCondition()
+{
+
+	if (std::getchar())
+	{
+		Asfrey::AsfreyPool::SetCondition(Asfrey::JobCondition::C1, true);
+	}
+	
+	while (true)
+	{
+
+	}
+	
+}
+
+void WaitCondition(void*)
+{
+	std::cout << "wait" << std::endl;
+
+	Asfrey::AsfreyPool::YieldOnCondition(Asfrey::JobCondition::C1);
+	std::cout << "Run" << std::endl;
+
+}
+
+
+void TestConditionTest()
+{
+
+	Asfrey::AsfreyPool::Initialize();
+
+	std::jthread d = std::jthread(SetCondition);
+	
+
+	using namespace Asfrey;
+
+	std::vector<Asfrey::Job> jobs1;
+	jobs1.resize(CountToValue);
+
+	for (auto& j : jobs1)
+	{
+		j.func = WaitCondition;
+		j.arg = nullptr;
+		j.jobPriorities = JobPriorities::MEDIUM;
+	}
+
+	AtomicCounter* jobCounter;
+	Asfrey::AsfreyPool::RunJob(jobs1.data(), jobs1.size(), &jobCounter);
+
+	Asfrey::AsfreyPool::WaitForCounterAndFree(jobCounter);
+	Asfrey::AsfreyPool::Destroy();
+}
+
+
+int main()
+{
+	if (MonoVsMultiTest)
+	{
+		MonoMulti();
+	}
+	else
+	{
+		TestConditionTest();
+	}
+
+	
 	return 0;
 }
